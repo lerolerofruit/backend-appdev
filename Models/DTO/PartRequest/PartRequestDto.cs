@@ -4,6 +4,8 @@ public class PartRequestDto
 {
     public Guid Id { get; set; }
     public Guid CustomerId { get; set; }
+    public string? RequestedByName { get; set; }
+    public string? RequestedByEmail { get; set; }
     public required string RequestedPartName { get; set; }
     public string? RequestedPartNumber { get; set; }
     public int Quantity { get; set; }

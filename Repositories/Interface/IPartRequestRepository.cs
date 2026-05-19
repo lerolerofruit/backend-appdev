@@ -10,4 +10,5 @@ public interface IPartRequestRepository
     Task<IReadOnlyCollection<PartRequestDto>> GetAllPartRequestsAsync();
     Task<AuthOperationResult<PartRequestDto>> GetPartRequestByIdAsync(Guid partRequestId);
     Task<AuthOperationResult<PartRequestDto>> UpdatePartRequestStatusAsync(Guid partRequestId, UpdatePartRequestStatusDto request);
+    Task<AuthOperationResult<bool>> DeletePartRequestAsync(Guid partRequestId, Guid requesterUserId, bool canDeleteAny);
 }

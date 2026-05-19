@@ -8,9 +8,9 @@ namespace IMS_API_.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Customer")]
 public class PartRequestsController(IPartRequestRepository partRequestRepository) : ControllerBase
 {
+    [Authorize(Roles = "Customer")]
     [HttpPost]
     public async Task<IActionResult> CreatePartRequest(CreatePartRequestDto request)
     {
@@ -24,6 +24,7 @@ public class PartRequestsController(IPartRequestRepository partRequestRepository
         return result.Succeeded ? Ok(result.Data) : BadRequest(result.Message);
     }
 
+    [Authorize(Roles = "Customer")]
     [HttpGet("my")]
     public async Task<IActionResult> GetMyPartRequests()
     {
@@ -37,7 +38,7 @@ public class PartRequestsController(IPartRequestRepository partRequestRepository
         return Ok(requests);
     }
 
-    [Authorize(Roles = "Admin, Staff")]
+    [Authorize(Roles = "Admin,Staff")]
     [HttpGet]
     public async Task<IActionResult> GetAllPartRequests()
     {
@@ -45,6 +46,7 @@ public class PartRequestsController(IPartRequestRepository partRequestRepository
         return Ok(requests);
     }
 
+    [Authorize(Roles = "Admin,Staff,Customer")]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetPartRequestById(Guid id)
     {
@@ -52,11 +54,34 @@ public class PartRequestsController(IPartRequestRepository partRequestRepository
         return result.Succeeded ? Ok(result.Data) : NotFound(result.Message);
     }
 
-    [Authorize(Roles = "Admin, Staff")]
+    [Authorize(Roles = "Admin,Staff")]
     [HttpPut("{id:guid}/status")]
     public async Task<IActionResult> UpdatePartRequestStatus(Guid id, UpdatePartRequestStatusDto request)
     {
         var result = await partRequestRepository.UpdatePartRequestStatusAsync(id, request);
         return result.Succeeded ? Ok(result.Data) : BadRequest(result.Message);
+    }
+
+    [Authorize(Roles = "Admin,Staff,Customer")]
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> DeletePartRequest(Guid id)
+    {
+        var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(userIdValue, out var requesterUserId))
+        {
+            return Unauthorized("Invalid user context.");
+        }
+
+        var canDeleteAny = User.IsInRole("Admin") || User.IsInRole("Staff");
+        var result = await partRequestRepository.DeletePartRequestAsync(id, requesterUserId, canDeleteAny);
+
+        if (!result.Succeeded)
+        {
+            return result.Message.Contains("not found", StringComparison.OrdinalIgnoreCase)
+                ? NotFound(result.Message)
+                : Forbid();
+        }
+
+        return Ok(new { message = result.Message });
     }
 }
