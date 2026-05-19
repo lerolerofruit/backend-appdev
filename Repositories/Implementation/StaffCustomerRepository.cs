@@ -113,9 +113,7 @@ public class StaffCustomerRepository(IMSDbContext imsDbContext) : IStaffCustomer
     public async Task<IReadOnlyCollection<RegularCustomerReportDto>> GetRegularCustomersAsync(int minInvoices, int days)
     {
         if (minInvoices < 1) minInvoices = 1;
-        if (days < 1) days = 30;
-
-        var fromDate = DateTime.UtcNow.AddDays(-days);
+        var fromDate = days > 0 ? DateTime.UtcNow.AddDays(-days) : (DateTime?)null;
 
         return await imsDbContext.Customers
             .AsNoTracking()
@@ -124,24 +122,27 @@ public class StaffCustomerRepository(IMSDbContext imsDbContext) : IStaffCustomer
             .Select(x => new
             {
                 Customer = x,
-                InvoiceCount = x.SalesInvoices.Count(i => i.InvoiceDate >= fromDate),
+                InvoiceCount = x.SalesInvoices.Count(i => !fromDate.HasValue || i.InvoiceDate >= fromDate.Value),
                 LastPurchaseAt = x.SalesInvoices
-                    .Where(i => i.InvoiceDate >= fromDate)
+                    .Where(i => !fromDate.HasValue || i.InvoiceDate >= fromDate.Value)
                     .OrderByDescending(i => i.InvoiceDate)
                     .Select(i => (DateTime?)i.InvoiceDate)
                     .FirstOrDefault()
             })
             .Where(x => x.InvoiceCount >= minInvoices)
             .OrderByDescending(x => x.InvoiceCount)
-            .ThenByDescending(x => x.Customer.TotalSpend)
+            .ThenByDescending(x => x.LastPurchaseAt)
             .Select(x => new RegularCustomerReportDto
             {
                 CustomerId = x.Customer.Id,
                 FullName = x.Customer.User.FullName,
+                Email = x.Customer.User.Email,
                 PhoneNumber = x.Customer.User.PhoneNumber,
                 InvoiceCount = x.InvoiceCount,
+                TotalInvoices = x.InvoiceCount,
                 TotalSpend = x.Customer.TotalSpend,
-                LastPurchaseAt = x.LastPurchaseAt
+                LastPurchaseAt = x.LastPurchaseAt,
+                LastPurchaseDate = x.LastPurchaseAt
             })
             .ToListAsync();
     }
@@ -150,36 +151,63 @@ public class StaffCustomerRepository(IMSDbContext imsDbContext) : IStaffCustomer
     {
         if (minTotalSpend < 0) minTotalSpend = 0;
 
-        return await imsDbContext.Customers
+        return await imsDbContext.SalesInvoices
             .AsNoTracking()
-            .Include(x => x.User)
+            .Include(x => x.Customer)
+                .ThenInclude(x => x.User)
+            .GroupBy(x => new
+            {
+                x.CustomerId,
+                x.Customer.User.FullName,
+                x.Customer.User.Email,
+                x.Customer.User.PhoneNumber
+            })
+            .Select(g => new HighSpenderReportDto
+            {
+                CustomerId = g.Key.CustomerId,
+                FullName = g.Key.FullName,
+                Email = g.Key.Email,
+                PhoneNumber = g.Key.PhoneNumber,
+                TotalSpend = g.Sum(i => i.TotalAmount),
+                InvoiceCount = g.Count(),
+                LastPurchaseDate = g.Max(i => (DateTime?)i.InvoiceDate)
+            })
             .Where(x => x.TotalSpend >= minTotalSpend)
             .OrderByDescending(x => x.TotalSpend)
-            .Select(x => new HighSpenderReportDto
-            {
-                CustomerId = x.Id,
-                FullName = x.User.FullName,
-                PhoneNumber = x.User.PhoneNumber,
-                TotalSpend = x.TotalSpend
-            })
+            .ThenByDescending(x => x.InvoiceCount)
             .ToListAsync();
     }
 
     public async Task<IReadOnlyCollection<PendingCreditReportDto>> GetPendingCreditsAsync()
     {
-        return await imsDbContext.Customers
+        return await imsDbContext.SalesInvoices
             .AsNoTracking()
-            .Include(x => x.User)
-            .Where(x => x.OutstandingCredit > 0)
-            .OrderByDescending(x => x.OutstandingCredit)
+            .Include(x => x.Customer)
+                .ThenInclude(x => x.User)
+            .Include(x => x.CreditPayments)
+            .Where(x => x.IsCreditSale || x.PaymentStatus == Models.Domains.InvoicePaymentStatus.Unpaid || x.PaymentStatus == Models.Domains.InvoicePaymentStatus.PartiallyPaid || x.PaymentStatus == Models.Domains.InvoicePaymentStatus.Overdue)
+            .Select(x => new
+            {
+                Invoice = x,
+                PaidAmount = x.CreditPayments.Sum(cp => cp.AmountPaid)
+            })
             .Select(x => new PendingCreditReportDto
             {
-                CustomerId = x.Id,
-                FullName = x.User.FullName,
-                PhoneNumber = x.User.PhoneNumber,
-                OutstandingCredit = x.OutstandingCredit,
-                CreditDueDate = x.CreditDueDate
+                CustomerId = x.Invoice.CustomerId,
+                FullName = x.Invoice.Customer.User.FullName,
+                Email = x.Invoice.Customer.User.Email,
+                PhoneNumber = x.Invoice.Customer.User.PhoneNumber,
+                InvoiceId = x.Invoice.Id,
+                InvoiceNumber = x.Invoice.InvoiceNumber,
+                InvoiceDate = x.Invoice.InvoiceDate,
+                DueAmount = x.Invoice.TotalAmount - x.PaidAmount,
+                PaymentStatus = x.Invoice.PaymentStatus.ToString(),
+                OutstandingCredit = x.Invoice.TotalAmount - x.PaidAmount,
+                CreditDueDate = x.Invoice.CreditDueDate
             })
+            .Where(x => x.DueAmount > 0)
+            .OrderByDescending(x => x.DueAmount)
+            .ThenByDescending(x => x.InvoiceDate)
             .ToListAsync();
     }
 }
