@@ -24,7 +24,9 @@ builder.Services.AddScoped<ISalesInvoiceRepository, SalesInvoiceRepository>();
 builder.Services.AddScoped<IStaffCustomerRepository, StaffCustomerRepository>();
 builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
 builder.Services.AddScoped<IAdminReportRepository, AdminReportRepository>();
-// Part requests, reviews, email service, and notification background service removed for Milestone 1
+builder.Services.AddScoped<IPartRequestRepository, PartRequestRepository>();
+builder.Services.AddScoped<ICustomerReviewRepository, CustomerReviewRepository>();
+// Email service and notification background service removed for Milestone 1
 builder.Services.AddDbContext<IMSDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("HPconnection")));
 builder.Services.AddDbContext<AuthContext>(options =>
