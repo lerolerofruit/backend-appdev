@@ -26,6 +26,7 @@ builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
 builder.Services.AddScoped<IAdminReportRepository, AdminReportRepository>();
 builder.Services.AddScoped<IPartRequestRepository, PartRequestRepository>();
 builder.Services.AddScoped<ICustomerReviewRepository, CustomerReviewRepository>();
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 // Email service and notification background service removed for Milestone 1
 builder.Services.AddDbContext<IMSDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("HPconnection")));
@@ -74,7 +75,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
-        policy.WithOrigins("http://localhost:4200", "https://localhost:4200")
+        policy.WithOrigins("http://localhost:4200", "https://localhost:4200", "http://localhost:4201", "https://localhost:4201")
               .AllowAnyHeader()
               .AllowAnyMethod());
 });
