@@ -15,12 +15,12 @@ public class PartRequestsController(IPartRequestRepository partRequestRepository
     public async Task<IActionResult> CreatePartRequest(CreatePartRequestDto request)
     {
         var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(userIdValue, out var customerId))
+        if (!Guid.TryParse(userIdValue, out var customerUserId))
         {
             return Unauthorized("Invalid user context.");
         }
 
-        var result = await partRequestRepository.CreatePartRequestAsync(customerId, request);
+        var result = await partRequestRepository.CreatePartRequestAsync(customerUserId, request);
         return result.Succeeded ? Ok(result.Data) : BadRequest(result.Message);
     }
 
@@ -28,12 +28,12 @@ public class PartRequestsController(IPartRequestRepository partRequestRepository
     public async Task<IActionResult> GetMyPartRequests()
     {
         var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(userIdValue, out var customerId))
+        if (!Guid.TryParse(userIdValue, out var customerUserId))
         {
             return Unauthorized("Invalid user context.");
         }
 
-        var requests = await partRequestRepository.GetMyPartRequestsAsync(customerId);
+        var requests = await partRequestRepository.GetMyPartRequestsAsync(customerUserId);
         return Ok(requests);
     }
 

@@ -31,12 +31,17 @@ public class AppointmentRepository(IMSDbContext imsDbContext) : IAppointmentRepo
             return new AuthOperationResult<AppointmentDto> { Succeeded = false, Message = "Appointment date must be in the future." };
         }
 
+        // Ensure the appointment date is treated as UTC
+        var appointmentDate = request.AppointmentDate.Kind == DateTimeKind.Unspecified 
+            ? DateTime.SpecifyKind(request.AppointmentDate, DateTimeKind.Utc) 
+            : request.AppointmentDate.ToUniversalTime();
+
         var appointment = new ServiceAppointment
         {
             Id = Guid.NewGuid(),
             CustomerId = customer.Id,
             VehicleId = vehicle.Id,
-            AppointmentDate = request.AppointmentDate,
+            AppointmentDate = appointmentDate,
             ServiceType = request.ServiceType.Trim(),
             Notes = request.Notes,
             Status = AppointmentStatus.Pending,
@@ -44,7 +49,27 @@ public class AppointmentRepository(IMSDbContext imsDbContext) : IAppointmentRepo
         };
 
         imsDbContext.ServiceAppointments.Add(appointment);
-        await imsDbContext.SaveChangesAsync();
+        
+        try
+        {
+            await imsDbContext.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            return new AuthOperationResult<AppointmentDto> 
+            { 
+                Succeeded = false, 
+                Message = $"Failed to save appointment: {ex.InnerException?.Message ?? ex.Message}" 
+            };
+        }
+        catch (Exception ex)
+        {
+            return new AuthOperationResult<AppointmentDto> 
+            { 
+                Succeeded = false, 
+                Message = $"An error occurred while booking the appointment: {ex.Message}" 
+            };
+        }
 
         return new AuthOperationResult<AppointmentDto>
         {

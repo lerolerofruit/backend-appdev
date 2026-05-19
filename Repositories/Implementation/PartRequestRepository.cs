@@ -9,7 +9,7 @@ namespace IMS_API_.Repositories.Implementation;
 
 public class PartRequestRepository(IMSDbContext imsDbContext) : IPartRequestRepository
 {
-    public async Task<AuthOperationResult<PartRequestDto>> CreatePartRequestAsync(Guid customerId, CreatePartRequestDto request)
+    public async Task<AuthOperationResult<PartRequestDto>> CreatePartRequestAsync(Guid customerUserId, CreatePartRequestDto request)
     {
         if (string.IsNullOrWhiteSpace(request.RequestedPartName))
         {
@@ -29,7 +29,7 @@ public class PartRequestRepository(IMSDbContext imsDbContext) : IPartRequestRepo
             };
         }
 
-        var customer = await imsDbContext.Customers.FirstOrDefaultAsync(x => x.Id == customerId);
+        var customer = await imsDbContext.Customers.FirstOrDefaultAsync(x => x.UserId == customerUserId);
         if (customer is null)
         {
             return new AuthOperationResult<PartRequestDto>
@@ -42,7 +42,7 @@ public class PartRequestRepository(IMSDbContext imsDbContext) : IPartRequestRepo
         var partRequest = new Models.Domains.PartRequest
         {
             Id = Guid.NewGuid(),
-            CustomerId = customerId,
+            CustomerId = customer.Id,
             RequestedPartName = request.RequestedPartName.Trim(),
             RequestedPartNumber = request.RequestedPartNumber?.Trim(),
             Quantity = request.Quantity,
@@ -51,7 +51,27 @@ public class PartRequestRepository(IMSDbContext imsDbContext) : IPartRequestRepo
         };
 
         await imsDbContext.PartRequests.AddAsync(partRequest);
-        await imsDbContext.SaveChangesAsync();
+        
+        try
+        {
+            await imsDbContext.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            return new AuthOperationResult<PartRequestDto>
+            {
+                Succeeded = false,
+                Message = $"Failed to save part request: {ex.InnerException?.Message ?? ex.Message}"
+            };
+        }
+        catch (Exception ex)
+        {
+            return new AuthOperationResult<PartRequestDto>
+            {
+                Succeeded = false,
+                Message = $"An error occurred while creating the part request: {ex.Message}"
+            };
+        }
 
         var dto = new PartRequestDto
         {
@@ -73,8 +93,19 @@ public class PartRequestRepository(IMSDbContext imsDbContext) : IPartRequestRepo
         };
     }
 
-    public async Task<IReadOnlyCollection<PartRequestDto>> GetMyPartRequestsAsync(Guid customerId)
+    public async Task<IReadOnlyCollection<PartRequestDto>> GetMyPartRequestsAsync(Guid customerUserId)
     {
+        var customerId = await imsDbContext.Customers
+            .AsNoTracking()
+            .Where(x => x.UserId == customerUserId)
+            .Select(x => (Guid?)x.Id)
+            .FirstOrDefaultAsync();
+
+        if (!customerId.HasValue)
+        {
+            return [];
+        }
+
         var requests = await imsDbContext.PartRequests
             .Where(x => x.CustomerId == customerId)
             .AsNoTracking()

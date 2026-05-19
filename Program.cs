@@ -105,6 +105,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// Global exception handling middleware
+app.UseMiddleware(typeof(ExceptionHandlingMiddleware));
+
 app.MapGet("/", () => Results.Redirect("/swagger"));
 
 app.UseHttpsRedirection();
