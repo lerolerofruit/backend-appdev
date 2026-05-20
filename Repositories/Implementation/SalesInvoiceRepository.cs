@@ -70,10 +70,10 @@ public class SalesInvoiceRepository(IMSDbContext imsDbContext) : ISalesInvoiceRe
                 return new AuthOperationResult<SalesInvoiceDto> { Succeeded = false, Message = "Item quantity must be greater than zero." };
             }
 
-            if (item.Discount < 0)
+            if (item.Discount < 0 || item.Discount > 100)
             {
                 await tx.RollbackAsync();
-                return new AuthOperationResult<SalesInvoiceDto> { Succeeded = false, Message = "Item discount cannot be negative." };
+                return new AuthOperationResult<SalesInvoiceDto> { Succeeded = false, Message = "Item discount must be between 0 and 100 percent." };
             }
 
             var part = await imsDbContext.VehicleParts.FirstOrDefaultAsync(x => x.Id == item.VehiclePartId && x.IsActive);
@@ -90,15 +90,10 @@ public class SalesInvoiceRepository(IMSDbContext imsDbContext) : ISalesInvoiceRe
             }
 
             var unitPrice = part.UnitPrice;
-            var manualDiscount = item.Discount;
-            if (manualDiscount > unitPrice)
-            {
-                await tx.RollbackAsync();
-                return new AuthOperationResult<SalesInvoiceDto> { Succeeded = false, Message = "Discount cannot exceed unit price." };
-            }
+            var discountPercentage = item.Discount;
 
-            subtotalBeforeLoyalty += (unitPrice - manualDiscount) * item.Quantity;
-            staged.Add((part, item.Quantity, manualDiscount, unitPrice));
+            subtotalBeforeLoyalty += unitPrice * (1 - discountPercentage / 100) * item.Quantity;
+            staged.Add((part, item.Quantity, discountPercentage, unitPrice));
         }
 
         // Apply loyalty discount: 10% off when subtotal exceeds 5000
@@ -111,15 +106,9 @@ public class SalesInvoiceRepository(IMSDbContext imsDbContext) : ISalesInvoiceRe
         var items = new List<SalesInvoiceItem>();
         decimal total = 0m;
 
-        foreach (var (part, quantity, manualDiscount, unitPrice) in staged)
+        foreach (var (part, quantity, discountPercentage, unitPrice) in staged)
         {
-            var combinedDiscount = manualDiscount;
-            if (combinedDiscount > unitPrice)
-            {
-                combinedDiscount = unitPrice;
-            }
-
-            var lineTotal = (unitPrice - combinedDiscount) * quantity;
+            var lineTotal = unitPrice * (1 - discountPercentage / 100) * quantity;
             total += lineTotal;
 
             items.Add(new SalesInvoiceItem
@@ -129,7 +118,7 @@ public class SalesInvoiceRepository(IMSDbContext imsDbContext) : ISalesInvoiceRe
                 VehiclePartId = part.Id,
                 Quantity = quantity,
                 UnitPrice = unitPrice,
-                Discount = combinedDiscount,
+                Discount = discountPercentage,
                 LineTotal = lineTotal
             });
 
