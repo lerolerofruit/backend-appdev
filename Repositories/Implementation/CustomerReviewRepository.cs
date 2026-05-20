@@ -9,7 +9,7 @@ namespace IMS_API_.Repositories.Implementation;
 
 public class CustomerReviewRepository(IMSDbContext imsDbContext) : ICustomerReviewRepository
 {
-    public async Task<AuthOperationResult<CustomerReviewDto>> CreateReviewAsync(Guid customerId, CreateCustomerReviewDto request)
+    public async Task<AuthOperationResult<CustomerReviewDto>> CreateReviewAsync(Guid customerUserId, CreateCustomerReviewDto request)
     {
         if (request.Rating < 1 || request.Rating > 5)
         {
@@ -31,7 +31,7 @@ public class CustomerReviewRepository(IMSDbContext imsDbContext) : ICustomerRevi
 
         var customer = await imsDbContext.Customers
             .Include(x => x.User)
-            .FirstOrDefaultAsync(x => x.Id == customerId);
+            .FirstOrDefaultAsync(x => x.UserId == customerUserId);
         if (customer is null)
         {
             return new AuthOperationResult<CustomerReviewDto>
@@ -41,10 +41,23 @@ public class CustomerReviewRepository(IMSDbContext imsDbContext) : ICustomerRevi
             };
         }
 
+        var hasCompletedService = await imsDbContext.ServiceAppointments
+            .AsNoTracking()
+            .AnyAsync(x => x.CustomerId == customer.Id && x.Status == AppointmentStatus.Completed);
+
+        if (!hasCompletedService)
+        {
+            return new AuthOperationResult<CustomerReviewDto>
+            {
+                Succeeded = false,
+                Message = "You can post a review after completing at least one service appointment."
+            };
+        }
+
         var review = new Models.Domains.CustomerReview
         {
             Id = Guid.NewGuid(),
-            CustomerId = customerId,
+            CustomerId = customer.Id,
             Rating = request.Rating,
             Comment = request.Comment.Trim(),
             CreatedAt = DateTime.UtcNow
@@ -71,13 +84,25 @@ public class CustomerReviewRepository(IMSDbContext imsDbContext) : ICustomerRevi
         };
     }
 
-    public async Task<IReadOnlyCollection<CustomerReviewDto>> GetMyReviewsAsync(Guid customerId)
+    public async Task<IReadOnlyCollection<CustomerReviewDto>> GetMyReviewsAsync(Guid customerUserId)
     {
+        var customerId = await imsDbContext.Customers
+            .AsNoTracking()
+            .Where(x => x.UserId == customerUserId)
+            .Select(x => (Guid?)x.Id)
+            .FirstOrDefaultAsync();
+
+        if (!customerId.HasValue)
+        {
+            return [];
+        }
+
         var reviews = await imsDbContext.CustomerReviews
-            .Where(x => x.CustomerId == customerId)
+            .Where(x => x.CustomerId == customerId.Value)
             .Include(x => x.Customer)
             .ThenInclude(x => x.User)
             .AsNoTracking()
+            .OrderByDescending(x => x.CreatedAt)
             .ToListAsync();
 
         return reviews.Select(x => new CustomerReviewDto
@@ -97,6 +122,7 @@ public class CustomerReviewRepository(IMSDbContext imsDbContext) : ICustomerRevi
             .Include(x => x.Customer)
             .ThenInclude(x => x.User)
             .AsNoTracking()
+            .OrderByDescending(x => x.CreatedAt)
             .ToListAsync();
 
         return reviews.Select(x => new CustomerReviewDto
@@ -144,8 +170,23 @@ public class CustomerReviewRepository(IMSDbContext imsDbContext) : ICustomerRevi
         };
     }
 
-    public async Task<AuthOperationResult<CustomerReviewDto>> DeleteReviewAsync(Guid reviewId, Guid customerId)
+    public async Task<AuthOperationResult<CustomerReviewDto>> DeleteReviewAsync(Guid reviewId, Guid customerUserId)
     {
+        var customerId = await imsDbContext.Customers
+            .AsNoTracking()
+            .Where(x => x.UserId == customerUserId)
+            .Select(x => (Guid?)x.Id)
+            .FirstOrDefaultAsync();
+
+        if (!customerId.HasValue)
+        {
+            return new AuthOperationResult<CustomerReviewDto>
+            {
+                Succeeded = false,
+                Message = "Customer not found."
+            };
+        }
+
         var review = await imsDbContext.CustomerReviews.FirstOrDefaultAsync(x => x.Id == reviewId);
         if (review is null)
         {
@@ -156,7 +197,7 @@ public class CustomerReviewRepository(IMSDbContext imsDbContext) : ICustomerRevi
             };
         }
 
-        if (review.CustomerId != customerId)
+        if (review.CustomerId != customerId.Value)
         {
             return new AuthOperationResult<CustomerReviewDto>
             {

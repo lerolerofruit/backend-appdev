@@ -5,9 +5,9 @@ namespace IMS_API_.Repositories.Interface;
 
 public interface ICustomerReviewRepository
 {
-    Task<AuthOperationResult<CustomerReviewDto>> CreateReviewAsync(Guid customerId, CreateCustomerReviewDto request);
-    Task<IReadOnlyCollection<CustomerReviewDto>> GetMyReviewsAsync(Guid customerId);
+    Task<AuthOperationResult<CustomerReviewDto>> CreateReviewAsync(Guid customerUserId, CreateCustomerReviewDto request);
+    Task<IReadOnlyCollection<CustomerReviewDto>> GetMyReviewsAsync(Guid customerUserId);
     Task<IReadOnlyCollection<CustomerReviewDto>> GetAllReviewsAsync();
     Task<AuthOperationResult<CustomerReviewDto>> GetReviewByIdAsync(Guid reviewId);
-    Task<AuthOperationResult<CustomerReviewDto>> DeleteReviewAsync(Guid reviewId, Guid customerId);
+    Task<AuthOperationResult<CustomerReviewDto>> DeleteReviewAsync(Guid reviewId, Guid customerUserId);
 }

@@ -15,12 +15,12 @@ public class CustomerReviewsController(ICustomerReviewRepository customerReviewR
     public async Task<IActionResult> CreateReview(CreateCustomerReviewDto request)
     {
         var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(userIdValue, out var customerId))
+        if (!Guid.TryParse(userIdValue, out var customerUserId))
         {
             return Unauthorized("Invalid user context.");
         }
 
-        var result = await customerReviewRepository.CreateReviewAsync(customerId, request);
+        var result = await customerReviewRepository.CreateReviewAsync(customerUserId, request);
         return result.Succeeded ? Ok(result.Data) : BadRequest(result.Message);
     }
 
@@ -36,12 +36,12 @@ public class CustomerReviewsController(ICustomerReviewRepository customerReviewR
     public async Task<IActionResult> GetMyReviews()
     {
         var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(userIdValue, out var customerId))
+        if (!Guid.TryParse(userIdValue, out var customerUserId))
         {
             return Unauthorized("Invalid user context.");
         }
 
-        var reviews = await customerReviewRepository.GetMyReviewsAsync(customerId);
+        var reviews = await customerReviewRepository.GetMyReviewsAsync(customerUserId);
         return Ok(reviews);
     }
 
@@ -57,12 +57,12 @@ public class CustomerReviewsController(ICustomerReviewRepository customerReviewR
     public async Task<IActionResult> DeleteReview(Guid id)
     {
         var userIdValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(userIdValue, out var customerId))
+        if (!Guid.TryParse(userIdValue, out var customerUserId))
         {
             return Unauthorized("Invalid user context.");
         }
 
-        var result = await customerReviewRepository.DeleteReviewAsync(id, customerId);
+        var result = await customerReviewRepository.DeleteReviewAsync(id, customerUserId);
         return result.Succeeded ? Ok(new { message = result.Message }) : BadRequest(result.Message);
     }
 }
