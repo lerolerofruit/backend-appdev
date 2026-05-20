@@ -55,6 +55,18 @@ public class PartsController(IPartRepository partRepository) : ControllerBase
         return Ok(new { Message = result.Message });
     }
 
+    [HttpPatch("{partId:guid}/stock")]
+    public async Task<IActionResult> AddStock(Guid partId, AddStockDto request)
+    {
+        var result = await partRepository.AddStockAsync(partId, request);
+        if (!result.Succeeded)
+        {
+            return result.Message == "Part not found." ? NotFound(result.Message) : BadRequest(result.Message);
+        }
+
+        return Ok(result.Data);
+    }
+
     [HttpDelete("{partId:guid}")]
     public async Task<IActionResult> DeletePart(Guid partId)
     {

@@ -9,6 +9,7 @@ public interface IPartRepository
     Task<AuthOperationResult<PartDto>> UpdatePartAsync(Guid partId, UpdatePartDto request);
     Task<AuthOperationResult<string>> DeletePartAsync(Guid partId);
     Task<AuthOperationResult<string>> UpdatePartStatusAsync(Guid partId, bool isActive);
+    Task<AuthOperationResult<PartDto>> AddStockAsync(Guid partId, AddStockDto request);
     Task<AuthOperationResult<PartDto>> GetPartByIdAsync(Guid partId);
     Task<IReadOnlyCollection<PartDto>> GetPartsAsync(bool includeInactive = false);
 }

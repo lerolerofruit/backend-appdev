@@ -192,6 +192,30 @@ public class PartRepository(IMSDbContext imsDbContext) : IPartRepository
             .ToListAsync();
     }
 
+    public async Task<AuthOperationResult<PartDto>> AddStockAsync(Guid partId, AddStockDto request)
+    {
+        if (request.Quantity <= 0)
+        {
+            return new AuthOperationResult<PartDto> { Succeeded = false, Message = "Quantity must be greater than zero." };
+        }
+
+        var part = await imsDbContext.VehicleParts.FirstOrDefaultAsync(x => x.Id == partId);
+        if (part is null)
+        {
+            return new AuthOperationResult<PartDto> { Succeeded = false, Message = "Part not found." };
+        }
+
+        part.StockQuantity += request.Quantity;
+        await imsDbContext.SaveChangesAsync();
+
+        return new AuthOperationResult<PartDto>
+        {
+            Succeeded = true,
+            Message = $"Added {request.Quantity} unit(s) to stock.",
+            Data = await MapPartAsync(partId)
+        };
+    }
+
     private async Task<PartDto> MapPartAsync(Guid partId)
         => await imsDbContext.VehicleParts
             .AsNoTracking()
