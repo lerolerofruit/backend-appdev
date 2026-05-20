@@ -42,4 +42,30 @@ public class CustomerAppointmentsController(IAppointmentRepository appointmentRe
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
         return Guid.TryParse(userIdClaim, out var userId) ? userId : null;
     }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdateAppointment(Guid id, UpdateAppointmentDto request)
+    {
+        var userId = GetCurrentUserId();
+        if (userId is null)
+        {
+            return Unauthorized("Invalid token.");
+        }
+
+        var result = await appointmentRepository.UpdateAppointmentAsync(userId.Value, id, request);
+        return result.Succeeded ? Ok(result.Data) : BadRequest(result.Message);
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> CancelAppointment(Guid id)
+    {
+        var userId = GetCurrentUserId();
+        if (userId is null)
+        {
+            return Unauthorized("Invalid token.");
+        }
+
+        var result = await appointmentRepository.DeleteAppointmentAsync(userId.Value, id);
+        return result.Succeeded ? Ok(result.Data) : BadRequest(result.Message);
+    }
 }

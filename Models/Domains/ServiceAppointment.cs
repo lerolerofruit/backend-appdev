@@ -8,6 +8,7 @@ public class ServiceAppointment
     public DateTime AppointmentDate { get; set; }
     public required string ServiceType { get; set; }
     public string? Notes { get; set; }
+    public string? ServiceNotes { get; set; }
     public AppointmentStatus Status { get; set; } = AppointmentStatus.Pending;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
