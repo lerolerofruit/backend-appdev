@@ -8,4 +8,5 @@ public interface IPurchaseInvoiceRepository
     Task<AuthOperationResult<PurchaseInvoiceDto>> CreatePurchaseInvoiceAsync(Guid adminUserId, CreatePurchaseInvoiceDto request);
     Task<AuthOperationResult<PurchaseInvoiceDto>> GetPurchaseInvoiceByIdAsync(Guid purchaseInvoiceId);
     Task<IReadOnlyCollection<PurchaseInvoiceDto>> GetPurchaseInvoicesAsync();
+    Task<AuthOperationResult<bool>> DeletePurchaseInvoiceAsync(Guid purchaseInvoiceId);
 }

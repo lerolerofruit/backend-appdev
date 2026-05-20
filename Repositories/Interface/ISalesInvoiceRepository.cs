@@ -8,4 +8,5 @@ public interface ISalesInvoiceRepository
     Task<AuthOperationResult<SalesInvoiceDto>> CreateSalesInvoiceAsync(Guid staffUserId, CreateSalesInvoiceDto request);
     Task<AuthOperationResult<SalesInvoiceDto>> GetSalesInvoiceByIdAsync(Guid salesInvoiceId);
     Task<IReadOnlyCollection<SalesInvoiceDto>> GetSalesInvoicesAsync(Guid? customerId = null);
+    Task<AuthOperationResult<bool>> DeleteSalesInvoiceAsync(Guid salesInvoiceId);
 }

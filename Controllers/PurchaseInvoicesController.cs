@@ -42,4 +42,16 @@ public class PurchaseInvoicesController(IPurchaseInvoiceRepository purchaseInvoi
 
         return Ok(result.Data);
     }
+
+    [HttpDelete("{purchaseInvoiceId:guid}")]
+    public async Task<IActionResult> DeletePurchaseInvoice(Guid purchaseInvoiceId)
+    {
+        var result = await purchaseInvoiceRepository.DeletePurchaseInvoiceAsync(purchaseInvoiceId);
+        if (!result.Succeeded)
+        {
+            return result.Message == "Purchase invoice not found." ? NotFound(result.Message) : BadRequest(result.Message);
+        }
+
+        return Ok(new { message = "Purchase invoice deleted." });
+    }
 }

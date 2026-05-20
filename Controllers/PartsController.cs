@@ -7,10 +7,10 @@ namespace IMS_API_.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize(Roles = "Admin")]
 public class PartsController(IPartRepository partRepository) : ControllerBase
 {
     [HttpGet]
+    [Authorize(Roles = "Admin,Staff")]
     public async Task<IActionResult> GetParts([FromQuery] bool includeInactive = false)
     {
         var parts = await partRepository.GetPartsAsync(includeInactive);
@@ -18,6 +18,7 @@ public class PartsController(IPartRepository partRepository) : ControllerBase
     }
 
     [HttpGet("{partId:guid}")]
+    [Authorize(Roles = "Admin,Staff")]
     public async Task<IActionResult> GetPart(Guid partId)
     {
         var result = await partRepository.GetPartByIdAsync(partId);
@@ -25,6 +26,7 @@ public class PartsController(IPartRepository partRepository) : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> CreatePart(CreatePartDto request)
     {
         var result = await partRepository.CreatePartAsync(request);
@@ -32,6 +34,7 @@ public class PartsController(IPartRepository partRepository) : ControllerBase
     }
 
     [HttpPut("{partId:guid}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> UpdatePart(Guid partId, UpdatePartDto request)
     {
         var result = await partRepository.UpdatePartAsync(partId, request);
@@ -44,6 +47,7 @@ public class PartsController(IPartRepository partRepository) : ControllerBase
     }
 
     [HttpPatch("{partId:guid}/status")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> UpdatePartStatus(Guid partId, UpdatePartStatusDto request)
     {
         var result = await partRepository.UpdatePartStatusAsync(partId, request.IsActive);
@@ -56,6 +60,7 @@ public class PartsController(IPartRepository partRepository) : ControllerBase
     }
 
     [HttpPatch("{partId:guid}/stock")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> AddStock(Guid partId, AddStockDto request)
     {
         var result = await partRepository.AddStockAsync(partId, request);
@@ -68,6 +73,7 @@ public class PartsController(IPartRepository partRepository) : ControllerBase
     }
 
     [HttpDelete("{partId:guid}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeletePart(Guid partId)
     {
         var result = await partRepository.DeletePartAsync(partId);

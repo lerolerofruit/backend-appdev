@@ -36,15 +36,19 @@ public class PurchaseInvoiceRepository(IMSDbContext imsDbContext) : IPurchaseInv
 
         await using var tx = await imsDbContext.Database.BeginTransactionAsync();
 
-        var invoice = new PurchaseInvoice
-        {
-            Id = Guid.NewGuid(),
-            InvoiceNumber = invoiceNumber,
-            VendorId = vendor.Id,
-            CreatedByAdminId = adminUserId,
-            InvoiceDate = request.InvoiceDate ?? DateTime.UtcNow,
-            TotalAmount = 0m
-        };
+            var invoiceDate = request.InvoiceDate.HasValue
+                ? DateTime.SpecifyKind(request.InvoiceDate.Value, DateTimeKind.Utc)
+                : DateTime.UtcNow;
+
+            var invoice = new PurchaseInvoice
+            {
+                Id = Guid.NewGuid(),
+                InvoiceNumber = invoiceNumber,
+                VendorId = vendor.Id,
+                CreatedByAdminId = adminUserId,
+                InvoiceDate = invoiceDate,
+                TotalAmount = 0m
+            };
 
         var items = new List<PurchaseInvoiceItem>();
         decimal total = 0m;
@@ -185,5 +189,42 @@ public class PurchaseInvoiceRepository(IMSDbContext imsDbContext) : IPurchaseInv
                     .ToList()
             })
             .ToListAsync();
+    }
+
+    public async Task<AuthOperationResult<bool>> DeletePurchaseInvoiceAsync(Guid purchaseInvoiceId)
+    {
+        var invoice = await imsDbContext.PurchaseInvoices
+            .Include(x => x.Items)
+            .FirstOrDefaultAsync(x => x.Id == purchaseInvoiceId);
+
+        if (invoice is null)
+        {
+            return new AuthOperationResult<bool> { Succeeded = false, Message = "Purchase invoice not found." };
+        }
+
+        await using var tx = await imsDbContext.Database.BeginTransactionAsync();
+        try
+        {
+            // revert stock quantities
+            foreach (var item in invoice.Items)
+            {
+                var part = await imsDbContext.VehicleParts.FirstOrDefaultAsync(p => p.Id == item.VehiclePartId);
+                if (part is not null)
+                {
+                    part.StockQuantity = Math.Max(0, part.StockQuantity - item.Quantity);
+                }
+            }
+
+            imsDbContext.PurchaseInvoices.Remove(invoice);
+            await imsDbContext.SaveChangesAsync();
+            await tx.CommitAsync();
+
+            return new AuthOperationResult<bool> { Succeeded = true, Message = "Purchase invoice deleted.", Data = true };
+        }
+        catch (Exception ex)
+        {
+            await tx.RollbackAsync();
+            return new AuthOperationResult<bool> { Succeeded = false, Message = ex.Message };
+        }
     }
 }

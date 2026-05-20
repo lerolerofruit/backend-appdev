@@ -82,6 +82,18 @@ public class SalesInvoicesController(ISalesInvoiceRepository salesInvoiceReposit
         }
     }
 
+    [HttpDelete("{salesInvoiceId:guid}")]
+    public async Task<IActionResult> DeleteSalesInvoice(Guid salesInvoiceId)
+    {
+        var result = await salesInvoiceRepository.DeleteSalesInvoiceAsync(salesInvoiceId);
+        if (!result.Succeeded)
+        {
+            return result.Message == "Sales invoice not found." ? NotFound(result.Message) : BadRequest(result.Message);
+        }
+
+        return Ok(new { message = "Sales invoice deleted." });
+    }
+
     private static string BuildInvoiceEmailBody(IMS_API_.Models.DTO.SalesInvoice.SalesInvoiceDto invoice)
     {
         var sb = new StringBuilder();

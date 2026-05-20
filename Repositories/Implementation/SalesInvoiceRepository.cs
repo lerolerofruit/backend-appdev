@@ -209,6 +209,60 @@ public class SalesInvoiceRepository(IMSDbContext imsDbContext) : ISalesInvoiceRe
         return invoices.Select(MapInvoice).ToList();
     }
 
+    public async Task<AuthOperationResult<bool>> DeleteSalesInvoiceAsync(Guid salesInvoiceId)
+    {
+        var invoice = await imsDbContext.SalesInvoices
+            .Include(x => x.Items)
+            .Include(x => x.Customer)
+            .FirstOrDefaultAsync(x => x.Id == salesInvoiceId);
+
+        if (invoice is null)
+        {
+            return new AuthOperationResult<bool> { Succeeded = false, Message = "Sales invoice not found." };
+        }
+
+        await using var tx = await imsDbContext.Database.BeginTransactionAsync();
+        try
+        {
+            // restore stock quantities
+            foreach (var item in invoice.Items)
+            {
+                var part = await imsDbContext.VehicleParts.FirstOrDefaultAsync(p => p.Id == item.VehiclePartId);
+                if (part is not null)
+                {
+                    part.StockQuantity += item.Quantity;
+                }
+            }
+
+            // adjust customer balances
+            if (invoice.IsCreditSale)
+            {
+                if (invoice.Customer is not null)
+                {
+                    invoice.Customer.OutstandingCredit = Math.Max(0, invoice.Customer.OutstandingCredit - invoice.TotalAmount);
+                }
+            }
+            else
+            {
+                if (invoice.Customer is not null)
+                {
+                    invoice.Customer.TotalSpend = Math.Max(0, invoice.Customer.TotalSpend - invoice.TotalAmount);
+                }
+            }
+
+            imsDbContext.SalesInvoices.Remove(invoice);
+            await imsDbContext.SaveChangesAsync();
+            await tx.CommitAsync();
+
+            return new AuthOperationResult<bool> { Succeeded = true, Message = "Sales invoice deleted.", Data = true };
+        }
+        catch (Exception ex)
+        {
+            await tx.RollbackAsync();
+            return new AuthOperationResult<bool> { Succeeded = false, Message = ex.Message };
+        }
+    }
+
 
     private static SalesInvoiceDto MapInvoice(Models.Domains.SalesInvoice invoice) => new()
     {
