@@ -12,6 +12,8 @@ public class SalesInvoiceDto
     public Guid ProcessedByStaffId { get; set; }
     public DateTime InvoiceDate { get; set; }
     public decimal TotalAmount { get; set; }
+    public decimal SubtotalAmount { get; set; }
+    public decimal LoyaltyDiscountAmount { get; set; }
     public bool IsCreditSale { get; set; }
     public InvoicePaymentStatus PaymentStatus { get; set; }
     public DateTime? CreditDueDate { get; set; }

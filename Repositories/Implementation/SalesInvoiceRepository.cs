@@ -101,7 +101,12 @@ public class SalesInvoiceRepository(IMSDbContext imsDbContext) : ISalesInvoiceRe
             staged.Add((part, item.Quantity, manualDiscount, unitPrice));
         }
 
-        // Loyalty program removed for Milestone 1 — only manual discounts apply.
+        // Apply loyalty discount: 10% off when subtotal exceeds 5000
+        decimal loyaltyDiscount = 0m;
+        if (subtotalBeforeLoyalty > 5000m)
+        {
+            loyaltyDiscount = Math.Round(subtotalBeforeLoyalty * 0.10m, 2);
+        }
 
         var items = new List<SalesInvoiceItem>();
         decimal total = 0m;
@@ -131,17 +136,19 @@ public class SalesInvoiceRepository(IMSDbContext imsDbContext) : ISalesInvoiceRe
             part.StockQuantity -= quantity;
         }
 
-        invoice.TotalAmount = total;
+        invoice.SubtotalAmount = subtotalBeforeLoyalty;
+        invoice.LoyaltyDiscountAmount = loyaltyDiscount;
+        invoice.TotalAmount = total - loyaltyDiscount;
         invoice.Items = items;
 
         if (invoice.IsCreditSale)
         {
-            customer.OutstandingCredit += total;
+            customer.OutstandingCredit += invoice.TotalAmount;
             customer.CreditDueDate = invoice.CreditDueDate;
         }
         else
         {
-            customer.TotalSpend += total;
+            customer.TotalSpend += invoice.TotalAmount;
         }
 
         imsDbContext.SalesInvoices.Add(invoice);
@@ -212,6 +219,8 @@ public class SalesInvoiceRepository(IMSDbContext imsDbContext) : ISalesInvoiceRe
         CustomerEmail = invoice.Customer.User.Email,
         ProcessedByStaffId = invoice.ProcessedByStaffId,
         InvoiceDate = invoice.InvoiceDate,
+        SubtotalAmount = invoice.SubtotalAmount,
+        LoyaltyDiscountAmount = invoice.LoyaltyDiscountAmount,
         TotalAmount = invoice.TotalAmount,
         IsCreditSale = invoice.IsCreditSale,
         PaymentStatus = invoice.PaymentStatus,

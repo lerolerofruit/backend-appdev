@@ -28,6 +28,9 @@ builder.Services.AddScoped<IPartRequestRepository, PartRequestRepository>();
 builder.Services.AddScoped<ICustomerReviewRepository, CustomerReviewRepository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 // Email service and notification background service removed for Milestone 1
+// Email configuration and service
+builder.Services.Configure<IMS_API_.Models.EmailSettings>(builder.Configuration.GetSection("Email:Smtp"));
+builder.Services.AddSingleton<IMS_API_.Services.IEmailService, IMS_API_.Services.SmtpEmailService>();
 builder.Services.AddDbContext<IMSDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("HPconnection")));
 builder.Services.AddDbContext<AuthContext>(options =>
