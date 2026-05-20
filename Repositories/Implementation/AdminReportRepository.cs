@@ -26,15 +26,17 @@ public class AdminReportRepository(IMSDbContext imsDbContext) : IAdminReportRepo
         {
             var (startDate, endDate) = GetDateRange(period.ToLower());
 
-            // Fetch sales invoices within the period
+            // Fetch sales invoices within the period - project only required columns to avoid mapping missing DB columns
             var salesInvoices = await imsDbContext.SalesInvoices
                 .Where(x => x.InvoiceDate >= startDate && x.InvoiceDate <= endDate)
+                .Select(x => new { x.Id, x.TotalAmount, x.InvoiceDate, x.PaymentStatus, x.IsCreditSale })
                 .AsNoTracking()
                 .ToListAsync();
 
-            // Fetch purchase invoices within the period
+            // Fetch purchase invoices within the period - project only required columns
             var purchaseInvoices = await imsDbContext.PurchaseInvoices
                 .Where(x => x.InvoiceDate >= startDate && x.InvoiceDate <= endDate)
+                .Select(x => new { x.Id, x.TotalAmount, x.InvoiceDate })
                 .AsNoTracking()
                 .ToListAsync();
 

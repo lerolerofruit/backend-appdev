@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations.Schema;
+
 namespace IMS_API_.Models.Domains;
 
 public class SalesInvoice
@@ -9,8 +11,11 @@ public class SalesInvoice
     public DateTime InvoiceDate { get; set; } = DateTime.UtcNow;
     public decimal TotalAmount { get; set; }
     // Subtotal before any invoice-level loyalty discount
+
+    [NotMapped]
     public decimal SubtotalAmount { get; set; }
     // Loyalty discount applied to the invoice (e.g. 10% when eligible)
+    [NotMapped]
     public decimal LoyaltyDiscountAmount { get; set; }
     public bool IsCreditSale { get; set; }
     public InvoicePaymentStatus PaymentStatus { get; set; } = InvoicePaymentStatus.Unpaid;

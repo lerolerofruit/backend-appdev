@@ -219,8 +219,10 @@ public class SalesInvoiceRepository(IMSDbContext imsDbContext) : ISalesInvoiceRe
         CustomerEmail = invoice.Customer.User.Email,
         ProcessedByStaffId = invoice.ProcessedByStaffId,
         InvoiceDate = invoice.InvoiceDate,
-        SubtotalAmount = invoice.SubtotalAmount,
-        LoyaltyDiscountAmount = invoice.LoyaltyDiscountAmount,
+        SubtotalAmount = invoice.Items?.Sum(i => (i.UnitPrice - i.Discount) * i.Quantity) ?? 0m,
+        LoyaltyDiscountAmount = (invoice.Items?.Sum(i => (i.UnitPrice - i.Discount) * i.Quantity) ?? 0m) > 5000m
+            ? Math.Round((invoice.Items?.Sum(i => (i.UnitPrice - i.Discount) * i.Quantity) ?? 0m) * 0.10m, 2)
+            : 0m,
         TotalAmount = invoice.TotalAmount,
         IsCreditSale = invoice.IsCreditSale,
         PaymentStatus = invoice.PaymentStatus,
